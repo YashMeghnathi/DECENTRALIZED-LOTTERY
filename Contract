@@ -81,13 +81,4 @@ contract Lottery is ReentrancyGuard {
         // Reset the lottery end time (for the next round)
         lotteryEndTime = block.timestamp + 5 minutes; // Set next lottery duration to 5 minutes (can be adjusted)
     }
-
-    // Additional Feature Idea:
-    // You could implement an automatic lottery end after the lottery duration ends if no winner has been declared yet.
-    // This will ensure that the lottery does not hang indefinitely and can automatically conclude after the set duration.
-    // This can be handled by adding a separate function or modifying the `win()` function.
-
-    // What if there are no participants?
-    // This could be handled by adding a check in the `win()` function to ensure there are participants before selecting a winner.
-    // For example, you could return funds to the participants or emit an event saying that no one participated.
 }
