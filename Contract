@@ -1,70 +1,93 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
+// Importing ReentrancyGuard to prevent reentrancy attacks on sensitive functions
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract Lottery is ReentrancyGuard {
-    address private manager;
-    address payable[] public players;
-    address payable public Winner;
-    uint public minimumval;
-    uint public lotteryEndTime;
-    
-    // Event declarations
+    address private manager; // Manager address (usually the contract deployer)
+    address payable[] public players; // Array to store the players' addresses
+    address payable public Winner; // The address of the winner
+    uint public minimumval; // Minimum amount required to participate
+    uint public lotteryEndTime; // Timestamp when the lottery ends
+
+    // Event declarations to emit when players participate, when the winner is declared, and when the lottery ends
     event Participated(address indexed player, uint amount);
     event WinnerDeclared(address indexed winner, uint amount);
     event LotteryEnded(uint prizeAmount, address indexed winner);
 
+    // Constructor to initialize the manager address, minimum value for participation, and lottery duration
     constructor(uint _minimumval, uint _durationInMinutes) {
-        manager = msg.sender;
-        minimumval = _minimumval;
-        lotteryEndTime = block.timestamp + _durationInMinutes * 1 minutes; // Lottery duration in minutes
+        manager = msg.sender; // Set the contract creator as the manager
+        minimumval = _minimumval; // Set the minimum participation value
+        lotteryEndTime = block.timestamp + _durationInMinutes * 1 minutes; // Set the end time based on input duration
     }
 
+    // Modifier to ensure only the manager can perform specific actions
     modifier onlyManager() {
         require(msg.sender == manager, "You are not the manager");
         _;
     }
 
+    // Modifier to ensure the lottery has ended before certain actions
     modifier hasEnded() {
         require(block.timestamp >= lotteryEndTime, "Lottery has not ended yet");
         _;
     }
 
+    // Function for players to participate by sending ether to the contract
     function participate() payable public {
+        // Ensure the player sends more than the minimum value
         require(msg.value > minimumval, "At least pay the minimum value");
+        // Ensure the lottery has not yet ended
         require(block.timestamp < lotteryEndTime, "Lottery has already ended");
+        // Add the player's address to the players array
         players.push(payable(msg.sender));
-        emit Participated(msg.sender, msg.value); // Emit participation event
+        // Emit an event when a player participates
+        emit Participated(msg.sender, msg.value);
     }
 
+    // Function to check the contract's current balance (total prize pool)
     function checkBal() public view returns(uint) {
         return address(this).balance;
     }
 
-    // Simplified randomness using block.prevrandao (not recommended for production)
+    // Simplified randomness using block.prevrandao (this is NOT recommended for production as it's vulnerable to manipulation)
+    // In production, consider using Chainlink VRF (Verifiable Random Function) for secure and tamper-proof randomness
     function random() public view returns (uint) {
         return uint(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, players.length)));
     }
 
+    // Function for the manager to declare the winner after the lottery ends
     function win() public onlyManager hasEnded nonReentrant {
+        // Ensure there are enough participants
         require(players.length > 3, "Not enough players");
 
-        uint r = random();  // Use simplified random number generation
-        uint index = r % players.length;  // Select winner based on randomness
-        Winner = players[index];
-        uint prizeAmount = address(this).balance;
+        // Generate a random number to select the winner
+        uint r = random();
+        uint index = r % players.length; // Select winner based on random number modulo players' length
+        Winner = players[index]; // Set the winner's address
+        uint prizeAmount = address(this).balance; // Get the total prize pool
 
+        // Transfer the prize to the winner
         Winner.transfer(prizeAmount);
+        // Emit an event when the winner is declared
         emit WinnerDeclared(Winner, prizeAmount);
-        emit LotteryEnded(prizeAmount, Winner); // Emit lottery end event
+        // Emit an event when the lottery ends, including the winner and prize amount
+        emit LotteryEnded(prizeAmount, Winner);
 
-        // Reset the lottery for the next round
+        // Reset the lottery for the next round by clearing the players array
         delete players;
-        lotteryEndTime = block.timestamp + 5 minutes; // Next lottery duration reset
+        // Reset the lottery end time (for the next round)
+        lotteryEndTime = block.timestamp + 5 minutes; // Set next lottery duration to 5 minutes (can be adjusted)
     }
-}
 
-// can add lottery end after time end
-//what if there is no participants
-// chainlink vrf for more secure 
+    // Additional Feature Idea:
+    // You could implement an automatic lottery end after the lottery duration ends if no winner has been declared yet.
+    // This will ensure that the lottery does not hang indefinitely and can automatically conclude after the set duration.
+    // This can be handled by adding a separate function or modifying the `win()` function.
+
+    // What if there are no participants?
+    // This could be handled by adding a check in the `win()` function to ensure there are participants before selecting a winner.
+    // For example, you could return funds to the participants or emit an event saying that no one participated.
+}
