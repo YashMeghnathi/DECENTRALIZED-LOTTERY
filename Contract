@@ -82,3 +82,6 @@ contract Lottery is ReentrancyGuard {
         lotteryEndTime = block.timestamp + 5 minutes; // Set next lottery duration to 5 minutes (can be adjusted)
     }
 }
+// can add lottery end after time end
+//what if there is no participants
+// chainlink vrf
