@@ -67,4 +67,4 @@ contract Lottery is ReentrancyGuard {
 
 // can add lottery end after time end
 //what if there is no participants
-// chainlink vrf
+// chainlink vrf for more secure 
